@@ -9,26 +9,26 @@ from threading import Thread
 
 outData = 0 # Evil Evil Global Variable
 # UDP packet receiver
-def getData():
-    global outData
-    ip = '127.0.0.1'
-    port = 20321
+class UDPRecv:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((ip, port))
-    check = 0
-    while True:
-        data, address = sock.recvfrom(1024)
-        m = re.search('ResultCode (.)', data)
-        if m:
-            a = m.group(1)
-            outData = int(a)
-            if outData != 0 and check == 0:
-                check = 1
-            elif outData != 0 and check == 1:
-                outData = 0
-            else:
-                check = 0
-                outData = 0
+    sock.bind(('127.0.0.1', 20321))
+    def getData(self):
+        global outData
+        self.check = 0
+        while True:
+            self.data, self.address = self.sock.recvfrom(1024)
+            self.m = re.search('ResultCode (.)', self.data)
+            if self.m:
+                self.a = self.m.group(1)
+                outData = int(self.a)
+                if outData != 0 and self.check == 0:
+                    self.check = 1
+                elif outData != 0 and self.check == 1:
+                    outData = 0
+                else:
+                    self.check = 0
+                    outData = 0
+                print outData
 
 class Game:
     def isCollision(self, x1, y1, x2, y2, bsize):
@@ -60,6 +60,7 @@ class App:
         self.player = Bar()
         self.ball = Ball()
         self.game = Game()
+        self.udp = UDPRecv()
     def on_init(self):
         pygame.init()
         self._display_surf = pygame.display.set_mode((self.windowWidth,self.windowHeight), pygame.HWSURFACE)
@@ -134,6 +135,7 @@ class App:
         pygame.display.flip()
 
     def on_cleanup(self):
+        self.udp.sock.close()
         pygame.quit()
 
     def on_execute(self):
@@ -163,7 +165,9 @@ class App:
 
             if self.ball.y < self.windowHeight + 100:
                 self.ball.displacement(self.ball.x,self.ball.y,self.angle, self.direction)
-
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self._running = False
             self.on_loop()
             self.on_render()
 
@@ -212,8 +216,9 @@ class Ball:
 
 if __name__ == "__main__":
     theApp = App()
+    udp = UDPRecv()
     t1 = Thread(target=theApp.on_execute)
-    t2 = Thread(target=getData)
+    t2 = Thread(target=udp.getData)
     t1.start()
     t2.start()
     t1.join()
